@@ -4,7 +4,8 @@ const express = require("express");
 const bodyParser =  require("body-parser");
 const ejs = require("ejs");
 const mongoose = require("mongoose");
-const encrypt = require("mongoose-encryption");
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
 
 
 const app = express();
@@ -27,8 +28,7 @@ const userSchema = new mongoose.Schema({
     password: String
 });
 
-//we add the "encrypt" package to the userSchema, define the secret that we gonna use to encrypt, also the filed that we actullay want to encrypt
-userSchema.plugin(encrypt,{secret: process.env.SECERT, encryptedFields: ["password"]});
+
 const User = new mongoose.model("User", userSchema);
 
 
@@ -46,22 +46,28 @@ app.get("/register", function(req, res){
 
 //post the input on the register page
 app.post("/register", function(req, res) {
-    const newUser = new User({
-        email: req.body.username,
-        password: req.body.password
-    })
-
-    newUser.save(function(err){
-        if(err) {
-            console.log(err);
-        } else {
-            res.render("secrets"); //see the sercets page if user registered
-        }
+    bcrypt.hash(req.body.password, saltRounds, function(err, hash) {
+        // Store hash in your password DB.
+        const newUser = new User({
+            email: req.body.username,
+            password: hash
+        })
+    
+        newUser.save(function(err){
+            if(err) {
+                console.log(err);
+            } else {
+                res.render("secrets"); //see the sercets page if user registered
+            }
+        });
     });
+
+    
 });
 
 //post the input on the login page
 app.post("/login", function(req, res){
+    
     const username = req.body.username;
     const password = req.body.password;
 
@@ -71,9 +77,11 @@ app.post("/login", function(req, res){
             console.log(err);
         } else {
             if(foundUser) {
-                if(foundUser.password === password) {
-                    res.render("secrets"); //see the secerts page if user login
-                }
+                bcrypt.compare(password, foundUser.password, function(err, result) {
+                    if(result === true) {
+                        res.render("secrets"); //see the secerts page if user login
+                    }
+                });   
             }
         }
     });

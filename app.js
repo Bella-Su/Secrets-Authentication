@@ -11,17 +11,13 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const findOrCreate = require('mongoose-findorcreate');
 
 
-
 const app = express();
-
-console.log(process.env.API_KEY);
 
 app.use(express.static("public"));
 app.set('view engine', 'ejs');
 app.use(express.urlencoded({
     extended: true
 }));
-
 
 
 //set up the seesion (has to be place here: create before use it)
@@ -35,21 +31,21 @@ app.use(passport.session());
 //************end */
 
 
-
 //connect to mongodb
 mongoose.connect("mongodb://localhost:27017/userDB", { useNewUrlParser: true, useUnifiedTopology: true });
 
 //fix the error
 mongoose.set('useCreateIndex', true);
 
+
 //create user schema and its model
 //this schema is diff than the usual one, it created use the mongoose schema class
 const userSchema = new mongoose.Schema({
     email: String,
     password: String,
-    googleId: String
+    googleId: String,
+    secret: String
 });
-
 
 userSchema.plugin(passportLocalMongoose);
 userSchema.plugin(findOrCreate);
@@ -71,6 +67,7 @@ passport.serializeUser(function(user, done) {
     });
   });
 
+
 //Configure Strategy
 passport.use(new GoogleStrategy({
     clientID: process.env.CLIENT_ID,
@@ -91,6 +88,9 @@ app.get("/", function (req, res) {
     res.render("home");
 })
 
+
+
+/*********************************OAuth with google *************************************/
 //Authenticate Requests
 //initiate authentication on google severs ask google for user's profile
 app.get('/auth/google',
@@ -104,6 +104,9 @@ app.get('/auth/google/secrets',
         // Successful authentication, redirect secrets page.
         res.redirect('/secrets');
     });
+/*********************************OAuth with google *************************************/
+
+
 
 app.get("/login", function (req, res) {
     res.render("login");
@@ -114,11 +117,42 @@ app.get("/register", function (req, res) {
 })
 
 app.get("/secrets", function (req, res) {
+
+    //itrate the secret filed, find the all users that with the filed is not null
+    User.find({"secret": {$ne:null}}, function(err, foundUsers) {
+        if(err) {
+            console.log(err);
+        } else {
+            if(foundUsers) {
+                res.render("secrets", {usersWithSecrets: foundUsers});
+            }
+        }
+    });
+});
+
+app.get("/submit", function(req, res){
     if (req.isAuthenticated()) {
-        res.render("secrets");
+        res.render("submit");
     } else {
         res.redirect("/login");
     }
+})
+
+app.post("/submit", function(req, res){
+    const submitSecret = req.body.secret;
+
+    User.findById(req.user.id,function(err,foundUser){
+        if(err) {
+            console.log(err);
+        } else {
+            if(foundUser) {
+                foundUser.secret = submitSecret;
+                foundUser.save(function(){
+                    res.redirect("/secrets");
+                });
+            }
+        }
+    } );
 });
 
 app.get("/logout", function (req, res) {
@@ -126,6 +160,9 @@ app.get("/logout", function (req, res) {
     res.redirect("/");
 })
 
+
+
+/******************************locally *************************************/
 //post the input on the register page
 app.post("/register", function (req, res) {
 
@@ -161,6 +198,8 @@ app.post("/login", function (req, res) {
     });
 
 });
+/******************************locally *************************************/
+
 
 
 app.listen(3000, function () {

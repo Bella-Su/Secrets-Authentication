@@ -3,6 +3,14 @@ body {
   background-color: #E8ECEF;
 }
 
+h1 {
+  color: #3d405b;
+}
+
+.fas {
+  color: #e07a5f;
+}
+
 .centered {
     padding-top: 200px;
     text-align: center;
@@ -12,5 +20,9 @@ body {
   text-align: center;
   font-size: 2rem;
   color: #fff;
-  background-color: #000;
+  background-color: #e07a5f;
+}
+
+.submitBtn, .loginBtn{
+  background-color: #81b29a;
 }
